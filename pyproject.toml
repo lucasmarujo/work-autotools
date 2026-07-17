@@ -1,0 +1,10 @@
+[project]
+name = "work-autotools"
+version = "0.1.0"
+description = "Automações internas — Jira, GitLab, code review"
+requires-python = ">=3.12"
+dependencies = [
+    "requests>=2.31.0",
+    "colorama>=0.4.6",
+    "python-dotenv>=1.0.0",
+]

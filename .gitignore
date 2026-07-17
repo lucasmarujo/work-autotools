@@ -1,0 +1,9 @@
+.env
+__pycache__/
+reviews-mr/
+repomix-output.xml
+.venv/
+
+plans/
+open-mrs/
+commits-summary
