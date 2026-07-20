@@ -40,6 +40,48 @@ def test_build_md_attachments_section():
     assert "[doc.pdf](./doc.pdf)" in md
 
 
+def test_build_comments_md():
+    task = {
+        "key": "GL-1", "url": "https://x/browse/GL-1", "summary": "T",
+        "comments": ["Ana: primeiro", "Bob: segundo"],
+    }
+    md = export._build_comments_md(task)
+    assert "# Comentários — [GL-1]" in md
+    assert "- Ana: primeiro" in md
+    assert "- Bob: segundo" in md
+
+
+def test_export_task_writes_separate_comments_file():
+    tmp_dir = Path(tempfile.mkdtemp())
+    try:
+        task = {
+            "key": "GL-1", "url": "https://x/browse/GL-1", "summary": "T",
+            "description": "desc", "attachments": [],
+            "comments": ["Ana: oi"],
+        }
+        export._export_task(task, tmp_dir)
+        desc = (tmp_dir / "GL-1-description.md").read_text(encoding="utf-8")
+        comments = (tmp_dir / "GL-1-comments.md")
+        assert comments.exists()
+        assert "Ana: oi" in comments.read_text(encoding="utf-8")
+        assert "Ana: oi" not in desc
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def test_export_task_no_comments_file_when_empty():
+    tmp_dir = Path(tempfile.mkdtemp())
+    try:
+        task = {
+            "key": "GL-1", "url": "https://x/browse/GL-1", "summary": "T",
+            "description": "desc", "attachments": [], "comments": [],
+        }
+        export._export_task(task, tmp_dir)
+        assert not (tmp_dir / "GL-1-comments.md").exists()
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def test_export_task_downloads_attachments_and_writes_md():
     downloaded = []
 
@@ -69,5 +111,8 @@ if __name__ == "__main__":
     test_sanitize_filename()
     test_build_md_subtask_link()
     test_build_md_attachments_section()
+    test_build_comments_md()
+    test_export_task_writes_separate_comments_file()
+    test_export_task_no_comments_file_when_empty()
     test_export_task_downloads_attachments_and_writes_md()
     print("OK - all checks passed")

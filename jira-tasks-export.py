@@ -65,18 +65,21 @@ def _build_md(task: dict, parent_key: str | None = None) -> str:
             fname = _sanitize_filename(a["filename"])
             attachments_section += f"- [{fname}](./{fname})\n"
 
-    comments_section = ""
-    if task.get("comments"):
-        comments_section = "\n---\n\n## Comentários\n\n"
-        for c in task["comments"]:
-            comments_section += f"- {c}\n"
-
     return f"""# [{task['key']}]({task['url']}) — {task['summary']}
 {parent_section}
 ## Descrição
 
 {task['description'] or '_(sem descrição)_'}
-{attachments_section}{comments_section}
+{attachments_section}
+"""
+
+
+def _build_comments_md(task: dict) -> str:
+    """Monta o .md com os comentários da task."""
+    comments = "\n".join(f"- {c}" for c in task["comments"])
+    return f"""# Comentários — [{task['key']}]({task['url']}) — {task['summary']}
+
+{comments}
 """
 
 
@@ -91,6 +94,12 @@ def _export_task(task: dict, out_dir: Path, parent_key: str | None = None) -> Pa
 
     out_path = out_dir / f"{task['key']}-description.md"
     out_path.write_text(_build_md(task, parent_key), encoding="utf-8")
+
+    if task.get("comments"):
+        comments_path = out_dir / f"{task['key']}-comments.md"
+        comments_path.write_text(_build_comments_md(task), encoding="utf-8")
+        print(f"    💬 {len(task['comments'])} comentário(s) salvos em: {comments_path}")
+
     return out_path
 
 
