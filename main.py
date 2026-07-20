@@ -75,41 +75,6 @@ def _info(msg: str):
 # Option handlers
 # ---------------------------------------------------------------------------
 
-def _run_code_review():
-    _clear()
-    _divider("CODE REVIEW")
-    print()
-    _info(f"Projetos disponíveis em: {_root}")
-    print()
-    repo  = _prompt("Nome ou caminho do projeto (ex: greenlegis)")
-    base  = _prompt("Branch base para o diff (ex: homolog, main)")
-    model = _prompt("Modelo Ollama [Enter = llama3.1]") or "llama3.1"
-    print()
-    _divider()
-    print()
-
-    # Resolve path: if not absolute and not found as-is, look in _root
-    repo_path = Path(repo)
-    if not repo_path.is_absolute() and not repo_path.exists():
-        repo_path = _root / repo
-
-    if not repo_path.exists():
-        _error(f"Projeto não encontrado: {repo_path}")
-        _done()
-        return
-
-    _info(f"Usando: {repo_path.resolve()}")
-    print()
-
-    try:
-        reviewer = _load("reviewer", _here / "reviewer.py")
-        reviewer.run(repo_path=str(repo_path), base_branch=base, model=model)
-    except Exception as e:
-        _error(str(e))
-
-    _done()
-
-
 def _run_jira_export():
     _clear()
     _divider("EXPORTAR TASKS JIRA PARA .MD")
@@ -145,29 +110,6 @@ def _run_gitlab_mr_reviews():
     try:
         gl_reviews = _load("export_gitlab_mr_reviews", _here / "export-gitlab-mr-reviews.py")
         gl_reviews.run(output_dir=output_dir)
-    except Exception as e:
-        _error(str(e))
-
-    _done()
-
-
-def _run_mr_code_review():
-    _clear()
-    _divider("CODE REVIEW DE MRs — GITLAB + IA")
-    print()
-    _info("Busca MRs abertos onde você é reviewer no GitLab.")
-    _info("Analisa o diff com IA (Ollama) e gera relatório.")
-    _info("Requer variável de ambiente GITLAB_TOKEN.")
-    print()
-    model      = _prompt("Modelo Ollama [Enter = qwen3]") or "qwen3"
-    output_dir = _prompt("Pasta de saída [Enter = code-review]") or None
-    print()
-    _divider()
-    print()
-
-    try:
-        mr_reviewer = _load("mr_code_reviewer", _here / "mr-code-reviewer.py")
-        mr_reviewer.run(model=model, output_dir=output_dir)
     except Exception as e:
         _error(str(e))
 
@@ -223,28 +165,6 @@ def _run_bbc():
     _done()
 
 
-def _run_gitlab_open_mrs_summary():
-    _clear()
-    _divider("MRS ABERTOS — GITLAB")
-    print()
-    _info("Busca todos os Merge Requests abertos (não merged) do seu usuário.")
-    _info("Gera um .md agrupando por projeto e por branch.")
-    _info("Requer variável de ambiente GITLAB_TOKEN.")
-    print()
-    output_dir = _prompt("Pasta de saída [Enter = open-mrs]") or None
-    print()
-    _divider()
-    print()
-
-    try:
-        open_mrs = _load("gitlab_open_mrs_summary", _here / "gitlab-open-mrs-summary.py")
-        open_mrs.run(output_dir=output_dir)
-    except Exception as e:
-        _error(str(e))
-
-    _done()
-
-
 def _run_gitlab_yesterday_summary():
     _clear()
     _divider("RESUMO DE COMMITS DE ONTEM — GITLAB")
@@ -267,84 +187,35 @@ def _run_gitlab_yesterday_summary():
     _done()
 
 
-def _run_gitlab_diff_export():
-    _clear()
-    _divider("EXPORTAR DIFF GITLAB (MR OU COMMIT) → .MD")
-    print()
-    _info("Gera um arquivo Markdown com as alterações de um MR ou Commit específico.")
-    _info("Suporta links de MR completo, MR com commit selecionado ou link de commit direto.")
-    _info("Requer variável de ambiente GITLAB_TOKEN.")
-    print()
-    mr_url = _prompt("Cole o link do MR ou Commit do GitLab")
-    output_dir = _prompt("Pasta de saída [Enter = diff_gitlab]") or "diff_gitlab"
-    print()
-    _divider()
-    print()
-
-    if not mr_url:
-        _error("Link não fornecido.")
-        _done()
-        return
-
-    try:
-        diff_gen = _load("gitlab_diff_generator", _here / "gitlab_diff_generator.py")
-        out_path = diff_gen.run(mr_url=mr_url, output_dir=output_dir)
-        _info(f"Diff exportado para: {out_path}")
-    except Exception as e:
-        _error(str(e))
-
-    _done()
-
-
 # ---------------------------------------------------------------------------
 # Menu loop
 # ---------------------------------------------------------------------------
 
 OPTIONS = {
     "1": (
-        "Code Review com IA",
-        "Analisa diff de um repositório local vs branch base",
-        _run_code_review,
-    ),
-    "2": (
         "Exportar Tasks Jira → .md",
         "Copia descrição das tasks (Aguardando/Em Desenvolvimento)",
         _run_jira_export,
     ),
-    "3": (
+    "2": (
         "Pendências de Review GitLab",
         "Exporta comentários pendentes dos MRs abertos p/ .md",
         _run_gitlab_mr_reviews,
     ),
-    "4": (
-        "Code Review de MRs (GitLab + IA)",
-        "Analisa MRs onde você é reviewer com Ollama",
-        _run_mr_code_review,
-    ),
-    "5": (
+    "3": (
         "Exportar Comentário Jira → .md",
         "Exporta um comentário específico do Jira para Markdown",
         _run_jira_comment_export,
     ),
-    "6": (
+    "4": (
         "modo teste automatizado",
         "Roda testes dependendo da stack em todos projetos abertos (Ctrl+C p/ sair)",
         _run_bbc,
     ),
-    "7": (
-        "Exportar Diff GitLab (MR/Commit) → .md",
-        "Gera um .md com as alterações de um MR ou Commit via link",
-        _run_gitlab_diff_export,
-    ),
-    "8": (
+    "5": (
         "Resumo de Commits de Ontem — GitLab",
         "Gera .md com seus commits de ontem agrupados por projeto",
         _run_gitlab_yesterday_summary,
-    ),
-    "9": (
-        "MRs Abertos — GitLab",
-        "Gera .md com seus MRs abertos agrupados por projeto e branch",
-        _run_gitlab_open_mrs_summary,
     ),
 }
 
