@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 import requests
@@ -117,14 +118,15 @@ def _adf_to_text(node) -> str:
     children = node.get("content", [])
 
     if node_type == "table":
-        return _adf_table_to_md(node)
+        # Linha em branco antes/depois — senão o GFM não renderiza a tabela.
+        return "\n" + _adf_table_to_md(node) + "\n"
 
     if node_type == "paragraph":
         text = "".join(_adf_to_text(c) for c in children)
-        return text + "\n"
+        return text + "\n\n"
 
     if node_type in ("bulletList", "orderedList"):
-        return "".join(_adf_to_text(c) for c in children)
+        return "".join(_adf_to_text(c) for c in children) + "\n"
 
     if node_type == "listItem":
         content = "".join(_adf_to_text(c) for c in children).strip()
@@ -133,22 +135,33 @@ def _adf_to_text(node) -> str:
     if node_type == "heading":
         level  = node.get("attrs", {}).get("level", 1)
         content = "".join(_adf_to_text(c) for c in children).strip()
-        return "#" * level + f" {content}\n"
+        return "#" * level + f" {content}\n\n"
 
     if node_type == "codeBlock":
         code = "".join(_adf_to_text(c) for c in children).strip()
         lang = node.get("attrs", {}).get("language", "")
-        return f"```{lang}\n{code}\n```\n"
+        return f"```{lang}\n{code}\n```\n\n"
 
     if node_type == "blockquote":
         content = "".join(_adf_to_text(c) for c in children).strip()
-        return f"> {content}\n"
+        quoted  = "\n".join(f"> {line}" if line else ">" for line in content.split("\n"))
+        return quoted + "\n\n"
 
     if node_type == "mention":
         return node.get("attrs", {}).get("text", "@unknown") + " "
 
     # doc, inlineCard, mediaSingle, etc.
     return "".join(_adf_to_text(c) for c in children)
+
+
+def _normalize_md(text: str) -> str:
+    """Colapsa 3+ quebras de linha em uma linha em branco e apara as bordas."""
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def adf_to_md(node) -> str:
+    """Converte um nó ADF em Markdown já normalizado (blocos separados por linha em branco)."""
+    return _normalize_md(_adf_to_text(node))
 
 
 # ---------------------------------------------------------------------------
@@ -218,18 +231,19 @@ def get_task_full_content(issue_key: str) -> dict:
     data   = r.json()
     fields = data["fields"]
 
-    # Parse description from ADF → plain text
+    # Parse description from ADF → Markdown
     description_adf  = fields.get("description") or {}
-    description_text = _adf_to_text(description_adf).strip()
+    description_text = adf_to_md(description_adf)
 
-    # Parse comments
+    # Parse comments — um dict por comentário (autor, data e corpo em Markdown)
     comment_list = fields.get("comment", {}).get("comments", [])
     comments = []
     for c in comment_list:
-        author = c.get("author", {}).get("displayName", "Unknown")
-        body   = _adf_to_text(c.get("body") or {}).strip()
+        author  = c.get("author", {}).get("displayName", "Unknown")
+        created = c.get("created", "")[:16].replace("T", " ")
+        body    = adf_to_md(c.get("body") or {})
         if body:
-            comments.append(f"{author}: {body}")
+            comments.append({"author": author, "created": created, "body": body})
 
     # Parse attachments
     attachments = [

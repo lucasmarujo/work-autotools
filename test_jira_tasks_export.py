@@ -43,12 +43,46 @@ def test_build_md_attachments_section():
 def test_build_comments_md():
     task = {
         "key": "GL-1", "url": "https://x/browse/GL-1", "summary": "T",
-        "comments": ["Ana: primeiro", "Bob: segundo"],
+        "comments": [
+            {"author": "Ana", "created": "2026-01-01 10:00", "body": "primeiro"},
+            {"author": "Bob", "created": "", "body": "segundo"},
+        ],
     }
     md = export._build_comments_md(task)
     assert "# Comentários — [GL-1]" in md
-    assert "- Ana: primeiro" in md
-    assert "- Bob: segundo" in md
+    assert "### Ana — 2026-01-01 10:00" in md
+    assert "primeiro" in md
+    assert "### Bob" in md
+    assert "segundo" in md
+    assert "\n---\n" in md
+
+
+def test_adf_table_has_blank_line_before():
+    adf = {"type": "doc", "content": [
+        {"type": "paragraph", "content": [{"type": "text", "text": "Segue:"}]},
+        {"type": "table", "content": [
+            {"type": "tableRow", "content": [
+                {"type": "tableHeader", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "A"}]}]},
+                {"type": "tableHeader", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "B"}]}]},
+            ]},
+            {"type": "tableRow", "content": [
+                {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "1"}]}]},
+                {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "2"}]}]},
+            ]},
+        ]},
+    ]}
+    md = export.jira.adf_to_md(adf)
+    assert "Segue:\n\n|" in md
+
+
+def test_adf_blockquote_multiline_prefixes_each_line():
+    adf = {"type": "blockquote", "content": [
+        {"type": "paragraph", "content": [{"type": "text", "text": "linha1"}]},
+        {"type": "paragraph", "content": [{"type": "text", "text": "linha2"}]},
+    ]}
+    md = export.jira.adf_to_md(adf)
+    assert "> linha1" in md
+    assert "> linha2" in md
 
 
 def test_export_task_writes_separate_comments_file():
@@ -57,14 +91,14 @@ def test_export_task_writes_separate_comments_file():
         task = {
             "key": "GL-1", "url": "https://x/browse/GL-1", "summary": "T",
             "description": "desc", "attachments": [],
-            "comments": ["Ana: oi"],
+            "comments": [{"author": "Ana", "created": "", "body": "oi"}],
         }
         export._export_task(task, tmp_dir)
         desc = (tmp_dir / "GL-1-description.md").read_text(encoding="utf-8")
         comments = (tmp_dir / "GL-1-comments.md")
         assert comments.exists()
-        assert "Ana: oi" in comments.read_text(encoding="utf-8")
-        assert "Ana: oi" not in desc
+        assert "oi" in comments.read_text(encoding="utf-8")
+        assert "oi" not in desc
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -112,6 +146,8 @@ if __name__ == "__main__":
     test_build_md_subtask_link()
     test_build_md_attachments_section()
     test_build_comments_md()
+    test_adf_table_has_blank_line_before()
+    test_adf_blockquote_multiline_prefixes_each_line()
     test_export_task_writes_separate_comments_file()
     test_export_task_no_comments_file_when_empty()
     test_export_task_downloads_attachments_and_writes_md()

@@ -75,11 +75,17 @@ def _build_md(task: dict, parent_key: str | None = None) -> str:
 
 
 def _build_comments_md(task: dict) -> str:
-    """Monta o .md com os comentários da task."""
-    comments = "\n".join(f"- {c}" for c in task["comments"])
+    """Monta o .md com os comentários da task — um bloco por comentário."""
+    blocks = []
+    for c in task["comments"]:
+        header = f"### {c['author']}"
+        if c.get("created"):
+            header += f" — {c['created']}"
+        blocks.append(f"{header}\n\n{c['body']}")
+    body = "\n\n---\n\n".join(blocks)
     return f"""# Comentários — [{task['key']}]({task['url']}) — {task['summary']}
 
-{comments}
+{body}
 """
 
 

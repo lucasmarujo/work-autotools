@@ -136,7 +136,7 @@ def _run_jira_comment_export():
             output_dir=Path(output_dir),
             auth=jira_api.auth,
             headers=jira_api.headers,
-            adf_to_text_func=jira_api._adf_to_text
+            adf_to_text_func=jira_api.adf_to_md
         )
         _info(f"Comentário exportado para: {out_path}")
     except Exception as e:
