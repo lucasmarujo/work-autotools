@@ -205,5 +205,3 @@ Este projeto está licenciado sob a licença MIT.
 ---
 
 Feito com 🐍 Python para eliminar tarefas repetitivas.
-
-```
