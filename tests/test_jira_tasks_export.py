@@ -13,8 +13,8 @@ def _load(name, path):
     return mod
 
 
-_here = Path(__file__).parent
-export = _load("jira_tasks_export", _here / "jira-tasks-export.py")
+_scripts = Path(__file__).parent.parent / "scripts"
+export = _load("jira_tasks_export", _scripts / "jira-tasks-export.py")
 
 
 def test_sanitize_filename():

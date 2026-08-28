@@ -24,7 +24,7 @@ def _load(name, path):
 jira = _load("atlassan_api", _here / "atlassan-api.py")
 
 BOARD_ID = 96
-PLANS_DIR = Path(__file__).parent / "plans"
+PLANS_DIR = Path(__file__).parent.parent / "plans"
 
 EXPORT_STATUSES = ["Aguardando", "Em Desenvolvimento"]
 

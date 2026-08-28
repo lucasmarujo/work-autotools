@@ -18,6 +18,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 _here = Path(__file__).parent
 _root = _here.parent  # C:\PROJETOS — where the other repos live
+_scripts = _here / "scripts"
 
 def _load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -86,7 +87,7 @@ def _run_jira_export():
     print()
 
     try:
-        exporter = _load("jira_tasks_export", _here / "jira-tasks-export.py")
+        exporter = _load("jira_tasks_export", _scripts / "jira-tasks-export.py")
         exporter.run()
     except Exception as e:
         _error(str(e))
@@ -108,7 +109,7 @@ def _run_gitlab_mr_reviews():
     print()
 
     try:
-        gl_reviews = _load("export_gitlab_mr_reviews", _here / "export-gitlab-mr-reviews.py")
+        gl_reviews = _load("export_gitlab_mr_reviews", _scripts / "export-gitlab-mr-reviews.py")
         gl_reviews.run(output_dir=output_dir)
     except Exception as e:
         _error(str(e))
@@ -129,8 +130,8 @@ def _run_jira_comment_export():
     print()
 
     try:
-        jira_api = _load("atlassan_api", _here / "atlassan-api.py")
-        exporter = _load("jira_comment_export", _here / "jira_comment_export.py")
+        jira_api = _load("atlassan_api", _scripts / "atlassan-api.py")
+        exporter = _load("jira_comment_export", _scripts / "jira_comment_export.py")
         out_path = exporter.export_jira_comment_to_md(
             jira_comment_url=jira_url,
             output_dir=Path(output_dir),
@@ -157,7 +158,7 @@ def _run_bbc():
     print()
 
     try:
-        bbc = _load("bbc", _here / "bbc.py")
+        bbc = _load("bbc", _scripts / "bbc.py")
         bbc.run()
     except Exception as e:
         _error(str(e))
@@ -165,13 +166,13 @@ def _run_bbc():
     _done()
 
 
-def _run_gitlab_yesterday_summary():
+def _run_github_yesterday_summary():
     _clear()
-    _divider("RESUMO DE COMMITS DE ONTEM — GITLAB")
+    _divider("RESUMO DE COMMITS DE ONTEM — GITHUB")
     print()
-    _info("Busca todos os commits feitos ontem pelo seu usuário no GitLab.")
+    _info("Busca todos os commits feitos ontem pelo seu usuário no GitHub.")
     _info("Gera um arquivo .md por data na pasta commits-summary/.")
-    _info("Requer variável de ambiente GITLAB_TOKEN.")
+    _info("Requer variável de ambiente GITHUB_TOKEN.")
     print()
     output_dir = _prompt("Pasta de saída [Enter = commits-summary]") or None
     print()
@@ -179,7 +180,7 @@ def _run_gitlab_yesterday_summary():
     print()
 
     try:
-        summary = _load("gitlab_yesterday_summary", _here / "gitlab-yesterday-summary.py")
+        summary = _load("github_yesterday_summary", _scripts / "github-yesterday-summary.py")
         summary.run(output_dir=output_dir)
     except Exception as e:
         _error(str(e))
@@ -213,9 +214,9 @@ OPTIONS = {
         _run_bbc,
     ),
     "5": (
-        "Resumo de Commits de Ontem — GitLab",
-        "Gera .md com seus commits de ontem agrupados por projeto",
-        _run_gitlab_yesterday_summary,
+        "Resumo de Commits de Ontem — GitHub",
+        "Gera .md com seus commits de ontem agrupados por branch",
+        _run_github_yesterday_summary,
     ),
 }
 

@@ -6,7 +6,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 JIRA_URL  = "https://greenlegis.atlassian.net"
 EMAIL     = os.environ.get("JIRA_EMAIL")

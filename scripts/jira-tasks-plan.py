@@ -25,7 +25,7 @@ plan_reviewer = _load("plan_reviewer", _here / "plan-reviewer.py")
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 BOARD_ID   = 96
-PLANS_DIR  = Path(__file__).parent / "plans"
+PLANS_DIR  = Path(__file__).parent.parent / "plans"
 
 PLAN_PROMPT = """
 Você é um Tech Lead Sênior responsável por elaborar um planejamento técnico completo e detalhado com base na task descrita abaixo.
