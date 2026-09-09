@@ -31,9 +31,11 @@ def _local(day: date, hour: int) -> datetime:
     return datetime.combine(day, time(hour, 0)).astimezone()
 
 
-def _commit(sha, message, hour=9, repository="acme/api"):
+def _commit(sha, message, hour=9, repository="acme/api", parents=1, position=0):
     return {
         "sha": sha,
+        "parents": [{"sha": f"p{i}"} for i in range(parents)],
+        "_position": position,
         "commit": {
             "author": {
                 "name": "Lucas Marujo",
@@ -118,6 +120,44 @@ def test_generate_markdown_escapa_pipe_e_ordena_por_horario():
     assert "| acme/api |" in md
     assert md.index("`aaa11111`") < md.index("`bbb22222`")
     assert "| 09:00:00 |" in md
+
+
+def test_is_merge_commit_detecta_dois_pais():
+    assert summary._is_merge_commit(_commit("mmm3333333", "Merge pull request #1", parents=2))
+    assert not summary._is_merge_commit(_commit("aaa1111111", "feat: a"))
+    assert not summary._is_merge_commit({})
+
+
+def test_keep_origin_branch_mantem_commit_na_branch_mais_proxima_do_topo():
+    herdado = _commit("aaa1111111", "feat: base", hour=9)
+    branches_commits = {
+        "feature/base": [dict(herdado, _position=0)],
+        "feature/derivada": [
+            _commit("bbb2222222", "feat: nova", hour=15, position=0),
+            dict(herdado, _position=1),
+        ],
+    }
+
+    result = summary.keep_origin_branch(branches_commits)
+
+    assert [c["sha"] for c in result["feature/base"]] == ["aaa1111111"]
+    assert [c["sha"] for c in result["feature/derivada"]] == ["bbb2222222"]
+
+
+def test_keep_origin_branch_remove_branch_que_ficou_vazia():
+    herdado = _commit("aaa1111111", "feat: base", hour=9)
+    branches_commits = {
+        "feature/base": [dict(herdado, _position=0)],
+        "feature/derivada": [dict(herdado, _position=3)],
+    }
+
+    result = summary.keep_origin_branch(branches_commits)
+
+    assert list(result) == ["feature/base"]
+
+
+def test_keep_origin_branch_sem_commits():
+    assert summary.keep_origin_branch({}) == {}
 
 
 def test_parse_datetime_invalido():

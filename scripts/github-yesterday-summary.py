@@ -170,6 +170,7 @@ def _fetch_branch_commits(
         "author": author,
         "since": since,
         "until": until,
+        "per_page": PER_PAGE,
     }
     response = requests.get(url, headers=headers, params=params, timeout=30)
     if response.status_code in (404, 409):
@@ -181,6 +182,42 @@ def _fetch_branch_commits(
         return commits
 
     return _paginated_get(url, headers, params)
+
+
+def _is_merge_commit(commit: dict) -> bool:
+    return len(commit.get("parents") or []) > 1
+
+
+def keep_origin_branch(
+    branches_commits: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Mantém cada commit apenas na branch em que ele está mais perto do topo.
+
+    Branches criadas a partir de outra herdam o histórico de origem; a menor
+    distância até o topo indica onde o commit foi realmente feito.
+    """
+    owner: dict[str, str] = {}
+    closest: dict[str, int] = {}
+
+    for branch in sorted(branches_commits):
+        for commit in branches_commits[branch]:
+            sha = commit.get("sha", "")
+            position = commit.get("_position", 0)
+            if sha not in closest or position < closest[sha]:
+                closest[sha] = position
+                owner[sha] = branch
+
+    result: dict[str, list[dict[str, Any]]] = {}
+    for branch in sorted(branches_commits):
+        kept = [
+            commit
+            for commit in branches_commits[branch]
+            if owner.get(commit.get("sha", "")) == branch
+        ]
+        if kept:
+            result[branch] = kept
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -304,29 +341,30 @@ def run(output_dir: str | None = None):
     logger.info("%d par(es) repositório/branch encontrado(s).", len(targets))
 
     branches_commits: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    seen: set[tuple[str, str]] = set()
 
     for repository, branch in sorted(targets):
         logger.info("Buscando commits: %s @ %s...", repository, branch)
-        commits = _fetch_branch_commits(
-            headers, repository, branch, login, since_iso, until_iso
-        )
-        logger.info("  → %d commit(s) encontrado(s)", len(commits))
+        commits = [
+            commit
+            for commit in _fetch_branch_commits(
+                headers, repository, branch, login, since_iso, until_iso
+            )
+            if not _is_merge_commit(commit)
+        ]
+        logger.info("  → %d commit(s) próprio(s) encontrado(s)", len(commits))
 
-        for commit in commits:
-            key = (branch, commit.get("sha", ""))
-            if key in seen:
-                continue
-            seen.add(key)
-
+        for position, commit in enumerate(commits):
             commit["_repository"] = repository
+            commit["_position"] = position
             branches_commits[branch].append(commit)
+
+    branches_commits = keep_origin_branch(branches_commits)
 
     if not branches_commits:
         logger.info("Nenhum commit encontrado ontem.")
         return
 
-    markdown_content = generate_markdown(user_name, yesterday, dict(branches_commits))
+    markdown_content = generate_markdown(user_name, yesterday, branches_commits)
 
     output_path = Path(output_dir or OUTPUT_DIR)
     output_path.mkdir(parents=True, exist_ok=True)
